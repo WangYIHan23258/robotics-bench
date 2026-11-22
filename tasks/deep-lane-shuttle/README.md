@@ -11,7 +11,7 @@ Deep-lane shuttle: interleaved putaway and ordered retrieval.
 | **Profile** | https://github.com/WangYIHan23258 |
 | **Tags** | `warehouse-robotics` `machine-tending` `planning` |
 | **Expert time estimate** | 1 hour |
-| **Agent budget** | 30 minutes |
+| **Agent budget** | 5 hours |
 | **Resources** | 1 CPU · 2 GB RAM |
 
 See [instruction.md](instruction.md) for the task as the agent receives it, and [task.toml](task.toml) for the full environment and verifier configuration.
