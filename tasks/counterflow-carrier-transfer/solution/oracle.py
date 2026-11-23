@@ -16,16 +16,21 @@ def checked(response):
 
 def intercept(layout, observed, part, lane, tick, head):
     xmax, ymax = layout["travel_mm"]
-    velocity = layout["belt_v"][lane]
+    profile = layout["profiles"][lane]
+    speed = layout["loaded_speed"] if lane else layout["max_speed"]
     hold = layout["hold"]
+    x = observed["x_mm"][part][lane] + sum(profile[t % len(profile)]
+                                           for t in range(observed["tick"], tick))
     for arrival in range(tick + 1, layout["deadline"] - hold + 1):
-        x = observed["x_mm"][part][lane] + velocity * (arrival - observed["tick"])
-        end = x + velocity * hold
+        x += profile[(arrival - 1) % len(profile)]
+        speeds = [profile[t % len(profile)] for t in range(arrival, arrival + hold)]
+        end = x + sum(speeds)
         if min(x, end) < 0 or max(x, end) > xmax:
             continue
         y = lane * ymax
-        if math.dist(head, (x, y)) <= layout["max_speed"] * (arrival - tick):
-            return [(x, y, arrival - tick), (end, y, hold)]
+        if math.dist(head, (x, y)) <= speed * (arrival - tick):
+            tracking = [(p, y, 1) for p in itertools.accumulate(speeds, initial=x)]
+            return [(x, y, arrival - tick), *tracking[1:]]
     return None
 
 

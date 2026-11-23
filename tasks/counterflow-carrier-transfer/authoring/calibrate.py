@@ -27,9 +27,8 @@ def scenario(name, client):
     steps = plan(layout, obs)
     for part, lane, moves in steps[:2]:
         for i, (x, y, n) in enumerate(moves):
-            if i == 1 and lane == 0 and name == "short dwell":
-                x -= layout["belt_v"][0]
-                n -= 1
+            if i == len(moves) - 1 and lane == 0 and name == "short dwell":
+                break
             checked(client.act(op="move", x=x, y=y, ticks=n))
         if name == "short dwell":
             assert not client.act(op="pick", part=part)["ok"]
