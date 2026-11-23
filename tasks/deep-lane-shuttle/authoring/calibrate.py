@@ -32,14 +32,18 @@ def scenario(name, client):
             checked(client.act(src=src, dst=dst))
             if client.observe()["index"] == len(info["manifest"]):
                 break
+        if not client.observe()["lanes"]["buffer"]:
+            checked(client.act(src="A", dst="buffer"))
     elif name == "late route":
         src, dst = route[0]
-        checked(client.act(src=src, dst=dst))
-        checked(client.act(src=dst, dst=src))
+        for _ in range(2):
+            checked(client.act(src=src, dst=dst))
+            checked(client.act(src=dst, dst=src))
         for src, dst in route:
             result = client.act(src=src, dst=dst)
             if not result["ok"]:
-                assert "shift deadline exceeded" in result["refused"]
+                assert any(reason in result["refused"] for reason in
+                           ("dock slot missed", "ambient staging limit exceeded", "shift deadline exceeded"))
                 break
         else:
             raise AssertionError("detour finished before deadline")

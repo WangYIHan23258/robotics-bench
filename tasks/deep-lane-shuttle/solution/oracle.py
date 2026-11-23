@@ -18,7 +18,8 @@ def plan(layout, observed):
     coords = [layout["x"][s] for s in stations]
     caps = [0] + [layout["capacity"][s] for s in stations[1:]]
     manifest = layout["manifest"]
-    start = (observed["index"], stations.index(observed["at"]),
+    buffer = stations.index("buffer")
+    start = (observed["index"], stations.index(observed["at"]), observed["exposure"],
              tuple(tuple(observed["lanes"][s]) for s in stations[1:]))
     dist = {start: observed["clock"]}
     previous = {}
@@ -27,7 +28,7 @@ def plan(layout, observed):
         time, state = heapq.heappop(queue)
         if time != dist[state]:
             continue
-        index, at, rows = state
+        index, at, exposure, rows = state
         if index == len(manifest) and all(p in rows[stations.index(s)-1]
                                           for p, s in layout["home"].items()):
             path = []
@@ -50,15 +51,30 @@ def plan(layout, observed):
                     continue
                 if dst == 0 and event != ["out", part]:
                     continue
-                new_time = time + 4 + abs(coords[at]-coords[src]) + 2*abs(coords[src]-coords[dst])
+                empty = abs(coords[at] - coords[src])
+                new_time = time + 4 + empty + 2*abs(coords[src]-coords[dst])
+                wait = 0
+                if not src or not dst:
+                    opening, closing = layout["dock_windows"][index]
+                    wait = max(0, opening - new_time)
+                    new_time += wait
+                    if new_time > closing:
+                        continue
                 if new_time > layout["deadline"]:
                     continue
+                age = exposure
+                if rows[buffer-1] and rows[buffer-1][0] in layout["chilled"]:
+                    age += wait + empty + 2 if src == buffer else new_time - time
+                    if age > layout["staging_limit"]:
+                        continue
+                if buffer in (src, dst):
+                    age = 0
                 changed = list(rows)
                 if src:
                     changed[src-1] = changed[src-1][1:]
                 if dst:
                     changed[dst-1] = (part,) + changed[dst-1]
-                successor = (index + int(not src or not dst), dst, tuple(changed))
+                successor = (index + int(not src or not dst), dst, age, tuple(changed))
                 if new_time < dist.get(successor, float("inf")):
                     dist[successor] = new_time
                     previous[successor] = state, (stations[src], stations[dst])
